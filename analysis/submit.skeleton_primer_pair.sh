@@ -15,7 +15,7 @@ echo this works
 
 # Load R from modules
 module load R
-module load clustalo
+module load bio/clustalo
 
 # Move to the correct folders
 #cd /home/rgallegosimon/
