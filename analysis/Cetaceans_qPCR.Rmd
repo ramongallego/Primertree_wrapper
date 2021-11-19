@@ -1,0 +1,167 @@
+---
+title: "Cetaceans_qPCR"
+output: pdf_document
+---
+
+```{r }
+library("primerTree")
+library("tidyverse")
+library("kableExtra")
+library(here)
+
+
+# Primer pairs specificity test using primerTree: The following commands are steps to look at the specificity of a pair of
+# primers using the R package primerTree by Cannon et al 2016. The package tests a pair of primers in silico against the NCBI database.
+# PrimerTree performs the following functions:
+# 1. In silico PCR against a selected NCBI database
+# 2. Retrieval of DNA sequences predicted to be amplified
+# 3. Taxonomic identification of these sequences
+# 4. Multiple DNA sequence alignment
+# 5. Reconstruction of a phylogenetic tree
+# 6. Visualization of the tree with taxonomic annotations
+
+# Cannon, M. V., Hester, J., Shalkhauser, A., Chan, E. R., Logue, K., Small, S. T., & Serre, D. (2016).
+# In silico assessment of primers for eDNA studies using PrimerTree and application to characterize the biodiversity
+# surrounding the Cuyahoga River. Scientific reports, 6(1), 1-11.
+
+# The default settings allow 3 mismatches in each primer (possibly six mismatches between the two primers?).
+# The script has been adapted here to be able to control the number of mismatches.
+
+# Here 2 or fewer mismatches per primer have been allowed, which is a more realistic parameter because there is
+# a third level of restriction given by the hydrolysis probe
+
+# Primer set for Cetaceans  common and certain species are:
+Bacu12SP <-		"CTGAGTTAATGAACAGGGGCTCT"
+Bbai12SP	<-	"AGCTTGCTAACACACGCT"
+Bmus12SP <-		"GCTTGGCCTGAGTTAATGAACTGT"
+Cet12SF	<-	"CATGRAGCACGCACACA"
+Cet12SR	<-	"CTTGTTACGACTTGTCTC"
+Dleu12SP	<-	"TAGATTACTAACCCATGCTAAGCAAGT"
+Dleu16SF	<-	"TCTCCTCGCACAAGCTTAC"
+Dleu16SP	<-	"TGACTGTTAATTATCAGTGTAA"
+Dleu16SR	<-	"GTTAACAGTGTATTTAATAAATG"
+Erob12SP	<-	"CCAGGCCAAGCAATTCGTACA"
+Mden12SP	<-	"CCTCAAGCATTATCACTGAGCTCA"
+Meur12SP	<-	"AGAGCTTGGCGATACTGCTTG"
+Mnov12SP	<-	"TTCATTAATTCAGGCCAAGCAAT"
+OoCR13F		<- "CAATTACTATAACATCACAGTACTACCC"
+OoCR57P	<-	"TGTTTTAAAAACATTCCACTGTACACAC"
+OoCR123R	<-	"AGACTAGAATATTAATATGTATGTGTATGTG"
+Ppho_CytbF	<-	"GTTCTTCATTTGTCTTTATATCCATATTG"
+Ppho_CytbP	<-	"CTATGACTATTAGTAGTAAGAGCACCC"
+Ppho_CytbR	<-	"GCACCTCAAAATGATATTTGTCCT"
+
+# Tested in pairs of forward and reverse per species. Probes are not tested here.
+# To build a table with the taxonomy by genus and with Acc no. The default table only gives the genBank identifier (gi),
+# not the accession # (accession). An intermediate table has to be generated to blend the information from BLAST result and taxonomy
+
+# outputs from Primer.pair Cet12S
+
+Recover_taxonomy_list <- function(Primer.pair) {
+  
+  Primer.pair$taxonomy %>%
+    left_join(Primer.pair$BLAST_result,by="gi")  %>%
+    distinct(order, genus, species, accession, mismatch_forward, mismatch_reverse) %>%
+    arrange(desc(genus))
+}
+
+Primer.pair.Cet12S <- search_primer_pair(
+  Cet12SF,
+  Cet12SR,
+  name = NULL,
+  num_aligns = 5000,
+  num_permutations = 25,
+  simplify = TRUE,
+  clustal_options = list(exec = "clustalo", quiet = TRUE, original.ordering = TRUE),
+  distance_options = list(model = "N", pairwise.deletion = T),
+  api_key = "00d50d47c3bb05fc3757e91cda4d69985f09",
+  .parallel = FALSE,
+  .progress = "none"
+)
+
+Recover_taxonomy_list(Primer.pair.Cet12S) -> Cet12S.NCBI.PCR.list
+
+Cet12S.NCBI.PCR.list %>%
+  write_csv(here("Output", "Cet12S.NCBI.PCR.list.csv"))
+
+Cet12S.NCBI.PCR.list %>%
+  group_by(family) %>% 
+  count()
+
+# Filter for n  mismatches for each primer and recover the list of results
+Primer.pair.Cet12S$BLAST_result %>%
+  filter (mismatch_forward <= 2 & mismatch_reverse <= 2) %>% pull(gi) -> Primer.pair.Cet12S.filtered
+
+Primer.pair.Cet12S->Cet12S.seqs
+Primer.pair.Cet12S$sequence[Primer.pair.Cet12S.filtered] -> Cet12S.seqs$sequence
+clustalo(Cet12S.seqs$sequence)-> Cet12S.seqs$alignment
+tree_from_alignment(Cet12S.seqs$alignment)->Cet12S.seqs$tree
+Cet12S.seqs$taxonomy <- get_taxonomy(Primer.pair.Cet12S.filtered)
+
+Recover_taxonomy_list(Cet12S.seqs) -> Cet12S.NCBI.PCR.list.filtered
+
+Cet12S.NCBI.PCR.list.filtered %>%
+  write_csv(here("Output", "Cet12S.NCBI.PCR.list.filtered.csv"))
+
+Cet12S.NCBI.PCR.list.filtered %>%
+  group_by(species) %>% 
+  count()
+
+# Plot tree
+plot_tree (Cet12S.seqs$tree, main= "Cetaceans in silico PCR", rank="family", taxonomy = Cet12S.seqs$taxonomy,
+           guide_size = 10, legend_cutoff = 50) +
+  theme_minimal() +
+  labs(x = "", y = "")+
+  ggsave(here("Output","Cet12S.insilicoPCR.NCBI.jpeg"))
+```
+
+Primer.pair.Dleu <- search_primer_pair(
+  Dleu16SF,
+  Dleu16SR,
+  name = NULL,
+  num_aligns = 1000,
+  num_permutations = 25,
+  simplify = TRUE,
+  clustal_options = list(exec = "clustalo", quiet = TRUE, original.ordering = TRUE),
+  distance_options = list(model = "N", pairwise.deletion = T),
+  api_key = "00d50d47c3bb05fc3757e91cda4d69985f09",
+  .parallel = FALSE,
+  .progress = "none"
+)
+
+Recover_taxonomy_list(Primer.pair.Dleu) -> Dleu.NCBI.PCR.list
+
+Dleu.NCBI.PCR.list %>%
+  write_csv(here("Output", "Dleu.NCBI.PCR.list.csv"))
+
+Dleu.NCBI.PCR.list %>%
+  group_by(species) %>% 
+  count()
+
+# Filter for n  mismatches for each primer and recover the list of results
+Primer.pair.Dleu$BLAST_result %>%
+  filter (mismatch_forward <= 2 & mismatch_reverse <= 2) %>% pull(gi) -> Primer.pair.Dleu.filtered
+
+Primer.pair.Dleu->Dleu.seqs
+Primer.pair.Dleu$sequence[Primer.pair.Dleu.filtered] -> Dleu.seqs$sequence
+clustalo(Dleu.seqs$sequence)-> Dleu.seqs$alignment
+tree_from_alignment(Dleu.seqs$alignment)->Dleu.seqs$tree
+Dleu.seqs$taxonomy <- get_taxonomy(Primer.pair.Dleu.filtered)
+
+Recover_taxonomy_list(Dleu.seqs) -> Dleu.NCBI.PCR.list.filtered
+
+Dleu.NCBI.PCR.list.filtered %>%
+  write_csv(here("Output", "Dleu.NCBI.PCR.list.filtered.csv"))
+
+Dleu.NCBI.PCR.list.filtered %>%
+  group_by(species) %>% 
+  count()
+
+# Plot tree
+plot_tree (Dleu.seqs$tree, main= "D.leucas in silico PCR", rank="species", taxonomy = Dleu.seqs$taxonomy,
+           guide_size = 10, legend_cutoff = 50) +
+  theme_minimal() +
+  labs(x = "", y = "")+
+  ggsave(here("Output","Dleu.insilicoPCR.NCBI.jpeg"))
+```
+
