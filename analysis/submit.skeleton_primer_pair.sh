@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
-#SBATCH --job-name=slurmdada2
-#SBATCH --output=log.dada2
+#SBATCH --job-name=primerTree
+#SBATCH --output=primerTree.log
 
 #SBATCH --mail-user=ramon.gallegosimon@noaa.gov
 # See manual for other options for --mail-type
