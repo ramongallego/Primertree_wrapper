@@ -1,0 +1,72 @@
+\documentclass{letter}
+
+
+\usepackage{hyperref}
+\usepackage[urw-garamond]{mathdesign}
+\usepackage[letterpaper, margin=1in]{geometry}
+\usepackage{graphicx}
+\usepackage{multicol}
+\usepackage{fancyhdr}
+\usepackage{lipsum}
+
+
+
+
+\signature{
+  \vspace*{-3\baselineskip}
+  \includegraphics[height=.7in]{MrCoolIce.pdf} \\ 
+  Mr. Cool Ice\\
+  \vspace*{\baselineskip}
+  \textit{On behalf of all authors}\\
+}
+\address{
+{\large Mr. Cool Ice} \\ 
+Very Ivy League University \\
+Institute for Excellence in Big Dada \\ 
+1800 Chocolate Donut Lane \\ 
+Port Moresby, Papua New Guinea \\ 
+MrCoolIce@MrCoolIce.gov \\
+}
+%\end{flushright}
+
+
+%move the closing and signature parts to the left,
+\longindentation=0pt
+
+% This eliminates the horizontal line below the header
+\renewcommand{\headrulewidth}{0.4pt}
+
+
+% Set height of header
+\setlength\headheight{0.6in}
+
+% offset left or right
+\fancyhfoffset[L]{0.5in}
+%\fancypagestyle{empty}{\fancyhead[L]{\includegraphics[height=0.37in, keepaspectratio=true]{Signature_Left_Purple.eps}}}
+\pagestyle{plain}
+
+\pagenumbering{gobble}
+\begin{document}
+
+\begin{letter}{
+%Somebody Important \\ 
+%Fancy Company \\
+%Fancy Building \\
+%1800 Chocolate Donut Lane \\
+%AmericaTown, USA\\
+}
+
+
+\vspace*{-5\baselineskip}
+
+\opening{Dear Dr. Editor,}
+
+We first wish to express our deep gratitude for the thorough and thoughtful feedback we received from you and three reviewers. 
+After carefully considering each point, we are happy to submit a revised version of the manuscript which we hope you will find to be satisfactory. 
+Our responses to all comments are detailed in a separate file.
+
+\closing{Your Pal,}
+
+
+\end{letter}
+\end{document}
