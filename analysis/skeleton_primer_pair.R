@@ -8,7 +8,7 @@ library(primerTree)
 API_KEY <- "c7f054eeed8138a4c66f908db525226fb208"
 params <- read_csv(args[1])
 
-params$outputfolder <- args[2]
+outputfolder <- args[2]
 dir.create(args[2])
 
 Recover_taxonomy_list <- function(Primer.pair) {
@@ -37,7 +37,7 @@ params %>%
                                                                 .progress = "none"))
   ) -> primer.output
 
-write_rds(primer.output, file = file.path(params$outputfolder, "primer_search.rds"))
+write_rds(primer.output, file = file.path(outputfolder, "primer_search.rds"))
 
 # Taxonomy.list
 
@@ -48,4 +48,4 @@ Taxa.list %>%
   select(Locus, data, taxonomy.list) %>% 
   unnest(data) %>% 
   unnest(taxonomy.list) %>% 
-  write_csv(file.path(params$outputfolder, "taxonomy.recovered.csv"))
+  write_csv(file.path(outputfolder, "taxonomy.recovered.csv"))
