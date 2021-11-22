@@ -5,7 +5,7 @@
 args = commandArgs(trailingOnly=TRUE)
 library(tidyverse)
 library(primerTree)
-
+API_KEY <- "c7f054eeed8138a4c66f908db525226fb208"
 params <- read_csv(args[1])
 
 params$outputfolder <- args[2]
@@ -32,7 +32,7 @@ params %>%
                                                                 clustal_options = list(exec = "clustalo",
                                                                                        quiet = TRUE, original.ordering = TRUE),
                                                                 distance_options = list(model = "N", pairwise.deletion = T),
-                                                                api_key = Sys.getenv("NCBI_API_KEY"),
+                                                                api_key = API_KEY,
                                                                 .parallel = FALSE,
                                                                 .progress = "none"))
   ) -> primer.output
