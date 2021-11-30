@@ -33,6 +33,7 @@ params %>%
                                                                                        quiet = TRUE, original.ordering = TRUE),
                                                                 distance_options = list(model = "N", pairwise.deletion = T),
                                                                 api_key = API_KEY,
+                                                                PRIMER_PRODUCT_MAX=18000,
                                                                 .parallel = FALSE,
                                                                 .progress = "none"))
   ) -> primer.output

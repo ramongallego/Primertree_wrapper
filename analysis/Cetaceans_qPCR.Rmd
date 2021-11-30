@@ -115,6 +115,8 @@ plot_tree (Cet12S.seqs$tree, main= "Cetaceans in silico PCR", rank="family", tax
   ggsave(here("Output","Cet12S.insilicoPCR.NCBI.jpeg"))
 ```
 
+
+```{r}
 Primer.pair.Dleu <- search_primer_pair(
   Dleu16SF,
   Dleu16SR,
