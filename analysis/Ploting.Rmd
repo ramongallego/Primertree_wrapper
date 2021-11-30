@@ -1,0 +1,70 @@
+---
+title: "R Notebook"
+output: html_notebook
+editor_options: 
+  chunk_output_type: inline
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Cmd+Shift+Enter*. 
+
+```{r}
+library(here)
+
+Recover_taxonomy_list <- function(Primer.pair) {
+  
+  Primer.pair$taxonomy %>%
+    left_join(Primer.pair$BLAST_result,by="gi")  %>%
+    distinct(order, genus, species, accession,taxId, mismatch_forward, mismatch_reverse) %>%
+    arrange(desc(genus))
+}
+
+output <- read_rds(here("data", "Run20211122","primer_search.rds"))
+output %>% 
+  filter (!str_detect(Locus, "Act")) %>% 
+  filter(!str_detect(Locus, "Chond|Cyc")) %>% 
+  mutate(taxonomy.list = map(primer.output, Recover_taxonomy_list)) -> Taxa.list
+
+Taxa.list %>%
+  select(Locus, data, taxonomy.list) %>% 
+  unnest(data) %>% 
+  unnest(taxonomy.list) %>% 
+  write_csv(here("data", "Run20211122", "taxonomy.recovered.csv"))
+
+
+## How many matches with more than 2 mismatches
+
+subset_primer_tree <- function(Primer.pair){
+  Primer.pair$BLAST_result %>% 
+    filter (mismatch_forward <= 2 & mismatch_reverse <= 2) %>% 
+    pull(gi) -> subset
+  
+  Primer.pair -> new.output
+  
+  new.output$sequence <- Primer.pair$sequence[subset]
+   
+  clustalo(new.output$sequence)-> new.output$alignment
+  
+  tree_from_alignment(new.output$alignment)-> new.output$tree
+  
+  new.output$taxonomy <- get_taxonomy(subset)
+  return(new.output)
+}
+
+Taxa.list %>% 
+  mutate(best_output = map(primer.output, subset_primer_tree) ,
+         plot = map2 (best_output,Locus,  ~ plot_tree(.x$tree,
+                                                      main= .y,
+                                                      rank="family",
+                                                      taxonomy = .x$taxonomy,
+                                                      guide_size = 10, legend_cutoff = 50))) -> Plots
+
+```
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Cmd+Option+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Cmd+Shift+K* to preview the HTML file). 
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+
