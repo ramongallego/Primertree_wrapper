@@ -6,7 +6,7 @@ args = commandArgs(trailingOnly=TRUE)
 library(tidyverse)
 library(primerTree)
 API_KEY <- "c7f054eeed8138a4c66f908db525226fb208"
-params <- read_csv(args[1])
+metadata <- read_csv(args[1])
 
 outputfolder <- args[2]
 dir.create(args[2])
@@ -49,7 +49,7 @@ Recover_taxonomy_list <- function(Primer.pair) {
 
 recover.safely <- possibly(Recover_taxonomy_list, "No_taxonomy")
 ## Search
-params %>%
+metadata %>%
   group_by(Locus) %>%
   nest() %>%
   mutate(primer.output = map2 (data,Locus,  ~search_primer_pair(forward = .x$Sequence_PrimerF,
