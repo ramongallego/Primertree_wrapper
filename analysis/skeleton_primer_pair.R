@@ -11,18 +11,47 @@ params <- read_csv(args[1])
 outputfolder <- args[2]
 dir.create(args[2])
 
+#####Checks
+reqs <-  c("Locus","Sequence_PrimerF","Sequence_PrimerR","Name_PrimerF","Name_PrimerR" )
+
+if (sum(reqs %in% colnames(metadata)) < length(reqs)  ){
+  message <- cat(paste(reqs, collapse = '\n'))
+  knitr::knit_exit(append = paste0(" ERROR: Initial metadata is missing some of the key column names:
+                                     ",
+                                   paste(reqs, collapse = '\n'),
+                                   "
+                                     Change the column names / add the infromation to your csv file",
+                                   sep = '\n' ))
+}
+
+# Check there are unique values for Locus
+
+metadata %>%
+  group_by(Locus) %>%
+  tally() %>%
+  pull(n) -> counts
+if (max(counts)>1 ){
+  message <- cat(paste(reqs, collapse = '\n'))
+  knitr::knit_exit(append = " ERROR: Initial metadata has repeated values for `Locus`
+                                    Make sure file is formatted correctly")
+}
+######### End of Checks
+
+
+
 Recover_taxonomy_list <- function(Primer.pair) {
-  
+
   Primer.pair$taxonomy %>%
     left_join(Primer.pair$BLAST_result,by="gi")  %>%
     distinct(order, genus, species, accession,taxId, mismatch_forward, mismatch_reverse) %>%
     arrange(desc(genus))
 }
 
+recover.safely <- possibly(Recover_taxonomy_list, "No_taxonomy")
 ## Search
-params %>% 
-  group_by(Locus) %>% 
-  nest() %>% 
+params %>%
+  group_by(Locus) %>%
+  nest() %>%
   mutate(primer.output = map2 (data,Locus,  ~search_primer_pair(forward = .x$Sequence_PrimerF,
                                                                 reverse = .x$Sequence_PrimerR,
                                                                 name = .y,
@@ -42,11 +71,11 @@ write_rds(primer.output, file = file.path(outputfolder, "primer_search.rds"))
 
 # Taxonomy.list
 
-primer.output %>% 
-  mutate(taxonomy.list = map(primer.output, Recover_taxonomy_list)) -> Taxa.list
+primer.output %>%
+  mutate(taxonomy.list = map(primer.output, recover.safely)) -> Taxa.list
 
 Taxa.list %>%
-  select(Locus, data, taxonomy.list) %>% 
-  unnest(data) %>% 
-  unnest(taxonomy.list) %>% 
+  select(Locus, data, taxonomy.list) %>%
+  unnest(data) %>%
+  unnest(taxonomy.list) %>%
   write_csv(file.path(outputfolder, "taxonomy.recovered.csv"))
