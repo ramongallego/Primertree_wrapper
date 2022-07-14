@@ -1,0 +1,142 @@
+---
+title: "Filter and Plot"
+output: html_document
+params:
+  folder: 
+    value: PrimerBlast_R
+  mismatches_F:
+    value: 2
+  mismatches_R:
+    value: 2  
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Filter sequences, print trees
+
+Given a primerTree search, limit the results to those with less than n mismatches, and print the trees
+```{r libraries}
+
+library(tidyverse)
+library(primerTree)
+library(here)
+library(foreach)
+library(doParallel)
+registerDoParallel(cores=4)
+```
+
+```{r data}
+
+Wrapper_output <- read_rds(file = file.path(params$folder, "primer_search.rds"))
+
+```
+
+
+```{r function}
+subset_primer_tree <- function(Primer.pair){
+  Primer.pair$BLAST_result %>% 
+    filter (mismatch_forward <= params$mismatches_F & mismatch_reverse <= params$mismatches_R) %>% 
+    pull(accession) -> subset
+  
+  Primer.pair -> new.output
+  
+  new.output$sequence <- Primer.pair$sequence[subset] # Is this correct?
+   
+  clustalo(new.output$sequence)-> new.output$alignment
+  
+  tree_from_alignment(new.output$alignment)-> new.output$tree
+  
+  new.output$taxonomy <- get_taxonomy(subset)
+  return(new.output)
+}
+
+Recover_taxonomy_list <- function(Primer.pair) {
+  
+  Primer.pair$taxonomy %>%
+    left_join(Primer.pair$BLAST_result,by="accession")  %>%
+    distinct(order, genus, species, accession,taxId, mismatch_forward, mismatch_reverse) %>%
+    arrange(desc(genus))
+}
+```
+
+
+```{r the plot}
+Wrapper_output %>% 
+  mutate(best_output = map(primer.output, ~ subset_primer_tree(.x)) ) -> Plots
+
+# Is the subset the right object
+
+Plots %>% 
+  mutate(new.taxonomy.list = map(best_output, Recover_taxonomy_list)) %>% select(Locus, new.taxonomy.list) %>% unnest()-> new.taxonomy.recovered
+  
+new.taxonomy.recovered %>% 
+  group_by(mismatch_forward) %>% 
+  tally()
+
+ranks <- c("family", "genus", "species")
+
+
+Plots %>% 
+  
+  mutate(
+         plot = pmap (list (a = best_output, b= Locus),
+                      function(a,b){ map(ranks,
+                                         function(.x) plot_tree(a$tree,
+                                                      main= b,
+                                                      rank=.x,
+                                                      taxonomy = a$taxonomy,
+                                                      guide_size = 10, legend_cutoff = 50) +
+                        theme_bw() +
+                          guides(color = FALSE)+
+                        labs(x = "", y = ""))}
+                                                      )) -> Plots
+```
+
+### View the plots
+
+
+```{r}
+Plots %>% 
+  pull(plot) -> all.plots
+
+flatten(all.plots) -> all.plots
+Locuses <- rep(Plots$Locus, each = length(ranks))
+rankeses <- rep (ranks, length(Plots$Locus))
+ pwalk(list(a = all.plots, b = Locuses,c = rankeses),  function(a, b, c){
+    ggsave(filename = file.path(params$folder, paste0(b,"_",c, ".png")), plot =a, device = "png")
+    } 
+  )
+   
+```
+
+### Get  the seq
+
+```{r}
+
+retrieve.pcr.product <- function(Primer.pair){
+  Primer.pair$sequence -> seqs.DNAbin
+  
+  Primer.pair$taxonomy %>% 
+    select(accession, species) -> new.names
+  tibble(accession = names(seqs.DNAbin)) %>% 
+    left_join(new.names) %>% 
+    unite(accession, species, col = "new.name" ,sep = " ", remove = F) -> new.names
+  
+  names(seqs.DNAbin) <- new.names$new.name
+  return(seqs.DNAbin)
+}
+
+
+save.pcr.product <- function(locus, pcr.prods){
+  insect::writeFASTA(pcr.prods, file = file.path(params$folder, paste0(locus, ".fa")))
+}
+
+Plots %>%
+  mutate(pcr.prods = map(best_output, retrieve.pcr.product)) -> Plots 
+
+ walk2(Plots$Locus, Plots$pcr.prods, save.pcr.product)
+
+```
+
